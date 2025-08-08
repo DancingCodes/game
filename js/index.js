@@ -13,16 +13,12 @@ function clearCanvas() {
 }
 clearCanvas()
 
-// 我的id
-const myId = null
-
-// 玩家列表
-const playerList = []
+let myPlayer = null
 
 // 连接 WebSocket 服务端
 const socket = new WebSocket('ws://localhost:3004');
 socket.addEventListener('open', () => {
-    console.log('✅ 已连接到 WebSocket 服务器');
+    console.log('已连接到 WebSocket 服务器');
 });
 
 // 接收消息
@@ -31,12 +27,9 @@ socket.addEventListener('message', (event) => {
     console.log('📩 收到消息：', type, data);
 
     if (type === 'playerInfo') {
-        playerList.push(data)
-
-        playerList.forEach(i => {
-            ctx.fillStyle = i.color;
-            ctx.fillRect(i.x, i.y, i.width, i.height);
-        })
+        myPlayer = data
+        ctx.fillStyle = i.color;
+        ctx.fillRect(i.x, i.y, i.width, i.height);
     }
 });
 
