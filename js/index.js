@@ -30,7 +30,6 @@ socket.addEventListener('message', (event) => {
 
 
 
-
 // 玩家列表
 const playerList = [{
     x: 100,
