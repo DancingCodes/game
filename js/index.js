@@ -15,48 +15,35 @@ window.addEventListener('resize', () => {
 
 // 渲染地图
 function initMap() {
-    const worldWidth = MAP_DATA.WORLD_WIDTH;
-    const worldHeight = MAP_DATA.WORLD_HEIGHT;
+    const { WORLD_WIDTH, WORLD_HEIGHT } = MAP_DATA
+    if (!WORLD_WIDTH || !WORLD_HEIGHT) return;
 
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-
-    // 设置 canvas 真实尺寸为地图真实尺寸
-    canvas.width = worldWidth;
-    canvas.height = worldHeight;
-
+    const { innerWidth, innerHeight } = window;
     // 计算窗口和地图宽高比
-    const worldRatio = worldWidth / worldHeight;
-    const windowRatio = windowWidth / windowHeight;
+    const [worldRatio, windowRatio] = [WORLD_WIDTH / WORLD_HEIGHT, innerWidth / innerHeight];
 
-    // 计算缩放比例，保持比例铺满窗口
-    let scale;
-    if (windowRatio > worldRatio) {
-        // 窗口更宽，按高度缩放
-        scale = windowHeight / worldHeight;
-    } else {
-        // 窗口更高，按宽度缩放
-        scale = windowWidth / worldWidth;
-    }
+    const [w, h] = worldRatio > windowRatio ? [innerWidth, innerWidth / worldRatio] : [innerHeight * worldRatio, innerHeight];
 
-    // 清空画布之前重置变换矩阵，防止叠加
+    const scale = worldRatio > windowRatio ? innerWidth / WORLD_WIDTH : innerHeight / WORLD_HEIGHT
+
+    canvas.width = w
+    canvas.height = h
+
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-    // 统一缩放画布上下文
-    ctx.scale(scale);
+    ctx.scale(scale, scale)
     clearCanvas();
 }
 
 // 重置Canvas
 function clearCanvas() {
     ctx.fillStyle = MAP_DATA.WORLD_BGCOLOR;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, MAP_DATA.WORLD_WIDTH, MAP_DATA.WORLD_HEIGHT);
 }
 
 let players = []
 
 // 连接 WebSocket 服务端
-const socket = new WebSocket('ws://192.168.1.70:3004');
+const socket = new WebSocket('ws://localhost:3004');
 socket.addEventListener('open', () => {
     console.log('已连接到 WebSocket 服务器');
 });
