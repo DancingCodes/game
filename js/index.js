@@ -43,7 +43,9 @@ function clearCanvas() {
 let players = []
 
 // 连接 WebSocket 服务端
-const socket = new WebSocket('ws://localhost:3004');
+// const socket = new WebSocket('ws://localhost:3004');
+const socket = new WebSocket('wss://gameapi.moonc.love/ws');
+
 socket.addEventListener('open', () => {
     console.log('已连接到 WebSocket 服务器');
 });
