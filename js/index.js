@@ -1,8 +1,8 @@
 // 地图信息
-const MAP_DATA = {
-    WORLD_WIDTH: null,
-    WORLD_HEIGHT: null,
-    WORLD_BGCOLOR: null,
+const WORLD = {
+    WIDTH: null,
+    HEIGHT: null,
+    BGCOLOR: null,
 }
 
 // 获取canvas
@@ -15,16 +15,16 @@ window.addEventListener('resize', () => {
 
 // 渲染地图
 function initMap() {
-    const { WORLD_WIDTH, WORLD_HEIGHT } = MAP_DATA
-    if (!WORLD_WIDTH || !WORLD_HEIGHT) return;
+    const { WIDTH, HEIGHT } = WORLD
+    if (!WIDTH || !HEIGHT) return;
 
     const { innerWidth, innerHeight } = window;
     // 计算窗口和地图宽高比
-    const [worldRatio, windowRatio] = [WORLD_WIDTH / WORLD_HEIGHT, innerWidth / innerHeight];
+    const [worldRatio, windowRatio] = [WIDTH / HEIGHT, innerWidth / innerHeight];
 
     const [w, h] = worldRatio > windowRatio ? [innerWidth, innerWidth / worldRatio] : [innerHeight * worldRatio, innerHeight];
 
-    const scale = worldRatio > windowRatio ? innerWidth / WORLD_WIDTH : innerHeight / WORLD_HEIGHT
+    const scale = worldRatio > windowRatio ? innerWidth / WIDTH : innerHeight / HEIGHT
 
     canvas.width = w
     canvas.height = h
@@ -36,11 +36,13 @@ function initMap() {
 
 // 重置Canvas
 function clearCanvas() {
-    ctx.fillStyle = MAP_DATA.WORLD_BGCOLOR;
-    ctx.fillRect(0, 0, MAP_DATA.WORLD_WIDTH, MAP_DATA.WORLD_HEIGHT);
+    ctx.fillStyle = WORLD.BGCOLOR;
+    ctx.fillRect(0, 0, WORLD.WIDTH, WORLD.HEIGHT);
 }
 
 let players = []
+let bullets = [];
+
 
 // 连接 WebSocket 服务端
 // const socket = new WebSocket('ws://localhost:3004');
@@ -53,41 +55,83 @@ socket.addEventListener('open', () => {
 // 接收消息
 socket.addEventListener('message', (event) => {
     const { type, data } = parseJSON(event.data);
-    console.log('📩 收到消息：', type, data);
+    // console.log('📩 收到消息：', type, data);
 
     if (type === 'initMap') {
-        Object.assign(MAP_DATA, { ...data });
+        Object.assign(WORLD, { ...data });
         initMap()
     }
 
-    if (type === 'updatePlayers') {
-        players = data
-        renderPlayers()
+    if (type === 'message') {
+        showMsg(data)
     }
 
+    if (type === 'renderGame') {
+        players = data.players
+        bullets = data.bullets
+        renderGame()
+    }
 });
 
 
-// 渲染玩家
-function renderPlayers() {
+// 渲染主线程
+function renderGame() {
     clearCanvas();
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
     players.forEach(p => {
+        // 设置透明度
+        ctx.globalAlpha = p.isAlive ? 1 : 0.3;
+
+        // 绘制玩家矩形
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1;
-        ctx.strokeRect(p.x, p.y, p.width, p.height);
+        ctx.strokeRect(p.x - p.width / 2, p.y - p.height / 2, p.width, p.height);
 
+        // 绘制武器
+        const barrelLength = 30 / 2;
+        let [endX, endY] = [null, null];
+        switch (p.direction) {
+            case 'w':
+                endX = p.x
+                endY = p.y - barrelLength;
+                break;
+            case 's':
+                endX = p.x
+                endY = p.y + barrelLength;
+                break;
+            case 'a':
+                endX = p.x - barrelLength;
+                endY = p.y;
+                break;
+            case 'd':
+                endX = p.x + barrelLength;
+                endY = p.y;
+                break;
+        }
+        ctx.strokeStyle = '#ff0000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(endX, endY);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+
+        // 绘制玩家ID
         ctx.fillStyle = '#ffffff';
-        const textX = p.x + p.width / 2;
-        const textY = p.y + p.height / 2;
-        ctx.fillText(p.id, textX, textY);
+        ctx.fillText(p.id, p.x, p.y);
     });
 
-    // 循环渲染
-    requestAnimationFrame(renderPlayers);
+
+    bullets.forEach(b => {
+        ctx.fillStyle = b.color;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    ctx.globalAlpha = 1;
 }
 
 // 玩家移动
@@ -95,6 +139,9 @@ window.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
     if (['w', 'a', 's', 'd'].includes(key)) {
         socket.send(sendJSON('move', key));
+    }
+    if ([' '].includes(key)) {
+        socket.send(sendJSON('fire', key));
     }
 });
 
@@ -105,4 +152,41 @@ function sendJSON(type, data) {
 
 function parseJSON(msg) {
     return JSON.parse(msg);
+}
+
+// 通知
+let msgDiv = null;
+let currentTimer = null;
+function showMsg(msg) {
+    if (msgDiv) {
+        msgDiv.remove();
+        msgDiv = null;
+        clearTimeout(currentTimer);
+        currentTimer = null;
+    }
+
+    // 创建新的消息
+    msgDiv = document.createElement('div');
+    msgDiv.textContent = msg;
+    Object.assign(msgDiv.style, {
+        position: 'fixed',
+        top: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        color: '#fff',
+        padding: '10px 20px',
+        borderRadius: '5px',
+        zIndex: 9999,
+        fontSize: '14px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+    });
+
+    document.body.appendChild(msgDiv);
+
+    currentTimer = setTimeout(() => {
+        msgDiv.remove();
+        msgDiv = null;
+        currentTimer = null;
+    }, 1000);
 }
