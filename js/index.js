@@ -23,22 +23,11 @@ function initMap() {
     const [worldRatio, windowRatio] = [WIDTH / HEIGHT, innerWidth / innerHeight];
 
     const [w, h] = worldRatio > windowRatio ? [innerWidth, innerWidth / worldRatio] : [innerHeight * worldRatio, innerHeight];
-
-    const scale = worldRatio > windowRatio ? innerWidth / WIDTH : innerHeight / HEIGHT
-
     canvas.width = w
     canvas.height = h
-
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(scale, scale)
-    clearCanvas();
 }
 
-// 重置Canvas
-function clearCanvas() {
-    ctx.fillStyle = WORLD.BGCOLOR;
-    ctx.fillRect(0, 0, WORLD.WIDTH, WORLD.HEIGHT);
-}
+
 
 let players = []
 let bullets = [];
@@ -76,7 +65,22 @@ socket.addEventListener('message', (event) => {
 
 // 渲染主线程
 function renderGame() {
-    clearCanvas();
+    const { WIDTH, HEIGHT } = WORLD;
+    if (!WIDTH || !HEIGHT) return;
+
+    // 重置画布变换 & 清空
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 应用缩放，使地图适应窗口
+    const scaleX = canvas.width / WIDTH;
+    const scaleY = canvas.height / HEIGHT;
+    ctx.scale(scaleX, scaleY);
+
+    
+    // 绘制地图背景
+    ctx.fillStyle = WORLD.BGCOLOR;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
